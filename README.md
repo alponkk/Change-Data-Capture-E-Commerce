@@ -197,7 +197,7 @@ Here's the detailed data flow through your pipeline:
 graph TD
     A[MongoDB<br/>ecom Database] --> B[Debezium Connector]
     B --> C[Kafka Topics<br/>mongo.ecom.*]
-    C --> D[ClickHouse Sink<br/>Connector]
+    D[ClickHouse Sink<br/>Connector]
     
     subgraph "Data Sources"
         A1[Customers Collection]
@@ -249,10 +249,6 @@ graph TD
     E1 --> G1
     E2 --> G2
     E3 --> G3
-    
-    F --> G1
-    F --> G2
-    F --> G3
     
     G1 --> H2
     G2 --> H3
