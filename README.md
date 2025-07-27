@@ -102,83 +102,140 @@ Change Data Capture Project/
 
 - **Docker & Docker Compose** - For running the infrastructure
 - **Python 3.8+** - For data generation scripts
-- **dbt Core & dbt-clickhouse** - For data transformations (or install via requirements.txt)
+- **PowerShell** (Windows) or bash (Linux/macOS) - For running commands
+- **dbt Core & dbt-clickhouse** - For data transformations (install via requirements.txt)
 
 ### 1. Start the Infrastructure
 
-```bash
+```powershell
 # Start all services (MongoDB, Kafka, ClickHouse, Kafka Connect)
 docker-compose up -d
 
-# Check service status
+# Wait for services to initialize (about 30 seconds)
+Start-Sleep -Seconds 30
+
+# Check service status - all 5 services should be "Up"
 docker-compose ps
 ```
 
+**⚠️ Important**: If Kafka fails to start, check the logs with `docker-compose logs kafka` and ensure the listener configuration is correct.
+
 ### 2. Install Python Dependencies
 
-```bash
+```powershell
 # Install all required Python packages
 pip install -r requirements.txt
+
+# If confluent-kafka has compilation issues, use pre-compiled wheels:
+# pip install --only-binary=all confluent-kafka
 ```
 
-### 3. Initialize MongoDB and Generate Data
+### 3. Initialize MongoDB Replica Set
 
-```bash
-# Initialize MongoDB replica set (optional - auto-configured)
+```powershell
+# Copy the initialization script to MongoDB container
+docker cp data-generation/init-replica-set.js mongo:/tmp/init-replica-set.js
+
+# Initialize replica set (required for CDC)
 docker exec -it mongo mongosh --file /tmp/init-replica-set.js
-
-# Generate fake e-commerce data
-cd data-generation
-python seed_data.py
-cd ..
 ```
 
-### 4. Deploy Change Data Capture Connectors
+### 4. Deploy Debezium Source Connector
 
-```bash
-# Deploy Debezium source connector (ClickHouse sink requires manual setup)
-cd scripts
-chmod +x register_connectors.sh
-./register_connectors.sh
-cd ..
+```powershell
+# Test if Kafka Connect is ready
+curl http://localhost:8083/
+
+# Register Debezium MongoDB source connector
+Invoke-WebRequest -Uri "http://localhost:8083/connectors" -Method POST -ContentType "application/json" -InFile "connectors/debezium-mongo-source-config.json"
+
+# Check connector status (should show "RUNNING")
+Invoke-WebRequest -Uri "http://localhost:8083/connectors/debezium-mongo-source/status" | Select-Object -ExpandProperty Content
 ```
 
-**Note**: The ClickHouse sink connector requires manual installation. For this demo, you can:
-1. Use only the Debezium connector to stream to Kafka topics
-2. Manually consume from Kafka and insert into ClickHouse
-3. Or install the ClickHouse connector manually (see Advanced Setup section below)
+### 5. Generate Sample Data
 
-### 5. Verify Data Flow
+```powershell
+# Generate fake e-commerce data (this will trigger CDC events)
+python data-generation/seed_data.py
+```
 
-```bash
-# Check Kafka topics are created
+### 6. Verify CDC Data Flow
+
+```powershell
+# Check Kafka topics were created by Debezium
 docker-compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
 
-# Verify data is flowing to Kafka
-docker-compose exec kafka kafka-console-consumer \
-  --bootstrap-server localhost:9092 \
-  --topic mongo.ecom.orders \
-  --from-beginning \
-  --max-messages 5
+# Verify CDC data is flowing to Kafka (single line for PowerShell)
+docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic mongo.ecom.ecom.orders --from-beginning --max-messages 5
 
 # Check ClickHouse is running
 docker-compose exec clickhouse clickhouse-client -q "SELECT 1"
 ```
 
-**Note**: Data will be in Kafka topics but not automatically in ClickHouse without the sink connector.
+**🎉 Success**: You should see:
+- Kafka topics: `mongo.ecom.ecom.customers`, `mongo.ecom.ecom.products`, `mongo.ecom.ecom.orders`
+- JSON messages in the Kafka consumer showing MongoDB changes with order data, line items, and customer IDs
+- ClickHouse responding with "1"
 
-### 6. Run dbt Transformations (After Setting Up ClickHouse Sink)
+### 7. Load Data into ClickHouse (Kafka Consumer Bridge)
 
-```bash
+Since the automated ClickHouse sink connector has installation issues, we use a custom Kafka consumer bridge:
+
+#### Option A: Reset and Load Fresh Data (Start Here)
+```powershell
+# Clear ClickHouse data and reload from Kafka beginning (filters out delete events)
+python scripts/kafka_to_clickhouse_bridge.py --reset
+```
+
+#### Option B: Real-time Streaming Pipeline (Recommended)
+```powershell
+# Start the real-time CDC pipeline (runs continuously)
+python scripts/kafka_to_clickhouse_bridge.py --realtime
+
+# This will run continuously, processing new CDC events as they arrive
+# Press Ctrl+C to stop when done testing
+```
+
+#### Option C: One-time Batch Processing  
+```powershell
+# Run once to process existing messages and exit
+python scripts/kafka_to_clickhouse_bridge.py --batch
+```
+
+#### Verify Data Loading
+```powershell
+# Check data counts in ClickHouse
+docker-compose exec clickhouse clickhouse-client -q "SELECT COUNT(*) as customers FROM mongo_ecom_customers; SELECT COUNT(*) as products FROM mongo_ecom_products; SELECT COUNT(*) as orders FROM mongo_ecom_orders;"
+```
+
+**🎉 Success**: You should see:
+- Customer records: 150+ rows (real customer data with names, emails)
+- Product records: 300+ rows (real product data with names, prices)
+- Order records: 600+ rows (real orders with line items)
+
+**Reset Mode**: Clears ClickHouse tables and reloads from Kafka beginning, filtering out delete events to ensure only real data is loaded.
+
+**Real-time Mode**: The bridge runs continuously, processing new CDC events as they arrive. This creates a true streaming data pipeline.
+
+**Batch Mode**: Processes existing messages and exits. Useful for initial data loading or periodic batch jobs.
+
+**⚠️ Note**: If you see `{"__deleted":true}` data, use the `--reset` option to clear and reload with real data.
+
+### 8. Run dbt Transformations
+
+Now that we have CDC data in ClickHouse, run the complete transformation pipeline:
+
+```powershell
 cd ecom_analytics
 
 # Install dbt packages
 dbt deps
 
-# Test dbt connection
+# Test dbt connection to ClickHouse
 dbt debug
 
-# Run transformations (only works after ClickHouse sink is configured)
+# Run the complete data transformation pipeline
 dbt run
 
 # Run data quality tests
@@ -187,17 +244,90 @@ dbt test
 cd ..
 ```
 
-**Note**: dbt transformations require data in ClickHouse tables. Complete the ClickHouse connector setup first.
+**🎉 Success**: You should see:
+- Bronze sources recognized (mongo_ecom_customers, mongo_ecom_products, mongo_ecom_orders)
+- Silver staging models created (stg_customers, stg_products, stg_orders)  
+- Gold marts created (dim_customers, dim_products, fact_orders, fct_daily_sales)
+- All tests passing
+
+### 🎯 Complete Pipeline Overview
+
+**Congratulations!** You now have a fully working end-to-end CDC pipeline:
+
+```
+MongoDB (Source) 
+    ↓ [CDC]
+Debezium Connector 
+    ↓ [JSON Events]
+Kafka Topics 
+    ↓ [Stream Processing]
+Kafka Consumer to ClickHouse Bridge
+    ↓ [Raw JSON Storage]
+ClickHouse Bronze Tables 
+    ↓ [dbt Transformations]
+ClickHouse Silver/Gold Tables
+```
+
+**Key Components:**
+- **MongoDB**: Source database with e-commerce data (customers, products, orders)
+- **Debezium**: Captures database changes and streams to Kafka
+- **Kafka**: Message broker storing CDC events as JSON
+- **Bridge Script**: Manual consumer that loads Kafka data into ClickHouse
+- **ClickHouse**: Analytical database storing raw and transformed data
+- **dbt**: SQL-based transformation tool creating analytics-ready tables
+
+**What you can do now:**
+- 📊 **Query analytics data**: Use ClickHouse SQL to analyze customer behavior, sales trends
+- 🔄 **Add new data**: Insert records into MongoDB and watch them flow through Kafka
+- 🧪 **Test CDC**: Update/delete MongoDB records to see change events
+- 📈 **Build dashboards**: Connect BI tools to ClickHouse Gold tables
+- 🔧 **Customize models**: Modify dbt models for your specific analytics needs
+
+## Linux/macOS Alternative Commands
+
+If you're on Linux or macOS, replace PowerShell commands with bash equivalents:
+
+```bash
+# Use curl instead of Invoke-WebRequest
+curl -X POST -H "Content-Type: application/json" --data @connectors/debezium-mongo-source-config.json http://localhost:8083/connectors
+
+# Use sleep instead of Start-Sleep
+sleep 30
+
+# Line continuation works with backslashes
+docker-compose exec kafka kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic mongo.ecom.ecom.orders \
+  --from-beginning \
+  --max-messages 5
+```
 
 ## 📊 Data Architecture Flow Diagram
 
 Here's the detailed data flow through your pipeline:
 
+```
+MongoDB (Source) 
+    ↓ [CDC]
+Debezium Connector 
+    ↓ [JSON Events]
+Kafka Topics 
+    ↓ [Stream Processing]
+Kafka Consumer to ClickHouse Bridge
+    ↓ [Raw JSON Storage]
+ClickHouse Bronze Tables 
+    ↓ [dbt Transformations]
+ClickHouse Silver/Gold Tables
+```
+
+**Note**: This pipeline uses a **manual Kafka consumer bridge** instead of the automated ClickHouse sink connector due to installation/compatibility issues.
+
 ```mermaid
 graph TD
     A[MongoDB<br/>ecom Database] --> B[Debezium Connector]
     B --> C[Kafka Topics<br/>mongo.ecom.*]
-    D[ClickHouse Sink<br/>Connector]
+    C --> D[Kafka Consumer Bridge<br/>Python Script]
+    D --> E[ClickHouse Bronze<br/>Raw Tables]
     
     subgraph "Data Sources"
         A1[Customers Collection]

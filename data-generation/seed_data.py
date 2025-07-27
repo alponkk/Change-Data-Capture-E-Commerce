@@ -15,7 +15,8 @@ fake = Faker()
 def connect_to_mongodb():
     """Connect to MongoDB instance"""
     try:
-        client = MongoClient('mongodb://localhost:27017/')
+        # Use directConnection=True to avoid replica set member discovery issues
+        client = MongoClient('mongodb://localhost:27017/?directConnection=true')
         # Test the connection
         client.admin.command('ping')
         print("✅ Successfully connected to MongoDB")
@@ -36,7 +37,7 @@ def generate_customers(db, count=50):
             'first_name': fake.first_name(),
             'last_name': fake.last_name(),
             'email': fake.email(),
-            'registration_date': fake.date_between(start_date='-2y', end_date='today')
+            'registration_date': fake.date_time_between(start_date='-2y', end_date='now')
         }
         customers.append(customer)
     
@@ -87,7 +88,7 @@ def generate_orders(db, customer_ids, product_ids, count=200):
         customer_id = random.choice(customer_ids)
         
         # Random order date (within last year)
-        order_date = fake.date_between(start_date='-1y', end_date='today')
+        order_date = fake.date_time_between(start_date='-1y', end_date='now')
         
         # Random status
         status = random.choice(statuses)
