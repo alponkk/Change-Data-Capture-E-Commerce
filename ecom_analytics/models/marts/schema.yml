@@ -1,0 +1,144 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: "Customer dimension table with segmentation and calculated fields"
+    columns:
+      - name: customer_id
+        description: "Unique customer identifier"
+        tests:
+          - unique
+          - not_null
+      - name: email
+        description: "Customer email address"
+        tests:
+          - unique
+          - not_null
+      - name: full_name
+        description: "Customer full name (first + last)"
+        tests:
+          - not_null
+      - name: customer_segment
+        description: "Customer segmentation based on registration date"
+        tests:
+          - accepted_values:
+              values: ['New', 'Recent', 'Established']
+      - name: days_since_registration
+        description: "Number of days since customer registration"
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+  - name: dim_products
+    description: "Product dimension table with categorization and inventory status"
+    columns:
+      - name: product_id
+        description: "Unique product identifier"
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: "Product name"
+        tests:
+          - not_null
+      - name: price
+        description: "Current product price"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: price_category
+        description: "Price categorization (Low/Medium/High)"
+        tests:
+          - accepted_values:
+              values: ['Low', 'Medium', 'High']
+      - name: inventory_status
+        description: "Current inventory status"
+        tests:
+          - accepted_values:
+              values: ['Out of Stock', 'Low Stock', 'Medium Stock', 'High Stock']
+      - name: stock_quantity
+        description: "Current stock quantity"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+  - name: fact_orders
+    description: "Comprehensive order fact table with customer and product enrichments"
+    columns:
+      - name: order_id
+        description: "Order identifier"
+        tests:
+          - not_null
+      - name: customer_id
+        description: "Customer identifier"
+        tests:
+          - not_null
+      - name: product_id
+        description: "Product identifier"
+        tests:
+          - not_null
+      - name: quantity
+        description: "Quantity of product ordered"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: unit_price
+        description: "Price per unit at time of order"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: line_total
+        description: "Total value of this line item (quantity * unit_price)"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: order_total_value
+        description: "Total value of the entire order"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: customer_lifetime_value
+        description: "Total customer lifetime value"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+
+  - name: fct_daily_sales
+    description: "Daily aggregated sales metrics"
+    columns:
+      - name: order_date
+        description: "Date of orders"
+        tests:
+          - unique
+          - not_null
+      - name: total_revenue
+        description: "Total revenue for the day"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: total_orders_placed
+        description: "Number of orders placed on this date"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: total_unique_customers
+        description: "Number of unique customers who placed orders"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: avg_order_value
+        description: "Average order value for the day"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0" 
