@@ -198,10 +198,6 @@ graph TD
     A[MongoDB<br/>ecom Database] --> B[Debezium Connector]
     B --> C[Kafka Topics<br/>mongo.ecom.*]
     C --> D[ClickHouse Sink<br/>Connector]
-    D --> E[ClickHouse Bronze<br/>Raw Tables]
-    
-    E --> F[dbt Sources<br/>bronze_sources.yml]
-    F --> G[Silver Layer<br/>Staging Models]
     
     subgraph "Data Sources"
         A1[Customers Collection]
