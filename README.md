@@ -326,8 +326,7 @@ ClickHouse Silver/Gold Tables
 graph TD
     A[MongoDB<br/>ecom Database] --> B[Debezium Connector]
     B --> C[Kafka Topics<br/>mongo.ecom.*]
-    C --> D[Kafka Consumer Bridge<br/>Python Script]
-    D --> E[ClickHouse Bronze<br/>Raw Tables]
+    D[Kafka Consumer Bridge<br/>Python Script]
     
     subgraph "Data Sources"
         A1[Customers Collection]
