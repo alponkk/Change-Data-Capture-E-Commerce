@@ -38,7 +38,7 @@ ClickHouse Silver/Gold Tables
 **🥇 Gold Layer (Business Metrics)**
 - **Purpose**: Aggregated business metrics and KPIs
 - **Storage**: ClickHouse fact and dimension tables
-- **Models**: `fct_daily_sales`, `dim_customers`, etc.
+- **Models**: `fct_daily_sales`, `dim_customers`, `dim_products`, `fact_orders`
 - **Transformations**: Business logic, aggregations, calculations
 
 ## 🛠️ Technologies Used
@@ -88,7 +88,11 @@ Change Data Capture Project/
     │   │   ├── stg_orders.sql           # Order staging model
     │   │   └── schema.yml               # Staging model tests
     │   └── marts/
-    │       └── fct_daily_sales.sql      # Gold layer fact table
+    │       ├── dim_customers.sql        # Customer dimension
+    │       ├── dim_products.sql         # Product dimension  
+    │       ├── fact_orders.sql          # Detailed orders fact
+    │       ├── fct_daily_sales.sql      # Daily sales aggregations
+    │       └── schema.yml               # Marts model tests
     └── [other dbt directories]
 ```
 
@@ -193,12 +197,11 @@ Here's the detailed data flow through your pipeline:
 graph TD
     A[MongoDB<br/>ecom Database] -->|Change Streams| B[Debezium Connector]
     B -->|CDC Events| C[Kafka Topics<br/>mongo.ecom.*]
-    C -->|JSON Messages| D[ClickHouse Sink<br/>Connector]
-    D -->|Raw JSON| E[ClickHouse Bronze<br/>Raw Tables]
+    C -->|Stream Data| D[ClickHouse Sink<br/>Connector]
+    D -->|Raw Data| E[ClickHouse Bronze<br/>Raw Tables]
     
     E -->|dbt Source| F[dbt Sources<br/>bronze_sources.yml]
-    F -->|JSON Parsing| G[Silver Layer<br/>stg_orders.sql]
-    G -->|Business Logic| H[Gold Layer<br/>fct_daily_sales.sql]
+    F -->|Data Transformation| G[Silver Layer<br/>Staging Models]
     
     subgraph "Data Sources"
         A1[Customers Collection]
@@ -225,9 +228,10 @@ graph TD
     end
     
     subgraph "ClickHouse Gold"
-        H1[fct_daily_sales]
-        H2[dim_customers]
-        H3[dim_products]
+        H1[fct_daily_sales<br/>Daily Aggregations]
+        H2[dim_customers<br/>Customer Dimension]
+        H3[dim_products<br/>Product Dimension]
+        H4[fact_orders<br/>Detailed Orders<br/>with Enrichments]
     end
     
     A1 --> A
@@ -254,9 +258,12 @@ graph TD
     F --> G2
     F --> G3
     
-    G3 --> H1
     G1 --> H2
     G2 --> H3
+    G3 --> H1
+    G3 --> H4
+    H2 --> H4
+    H3 --> H4
 ```
 
 ## 🔧 Configuration Details
@@ -303,13 +310,61 @@ LIMIT 10;
 ```
 
 ### Gold Layer - Business Metrics
+
+#### Customer Dimension
+```sql
+-- Customer segmentation analysis
+SELECT 
+    customer_segment,
+    COUNT(*) as customer_count,
+    AVG(days_since_registration) as avg_days_registered
+FROM dim_customers
+GROUP BY customer_segment
+ORDER BY customer_count DESC;
+```
+
+#### Product Dimension
+```sql
+-- Product inventory and pricing analysis
+SELECT 
+    price_category,
+    inventory_status,
+    COUNT(*) as product_count,
+    AVG(price) as avg_price
+FROM dim_products
+GROUP BY price_category, inventory_status
+ORDER BY price_category, inventory_status;
+```
+
+#### Comprehensive Order Facts
+```sql
+-- Detailed order analysis with customer and product info
+SELECT 
+    order_date,
+    customer_name,
+    customer_segment,
+    product_name,
+    price_category,
+    quantity,
+    unit_price,
+    line_total,
+    order_total_value,
+    customer_lifetime_value
+FROM fact_orders
+WHERE order_date >= subtractDays(today(), 7)
+ORDER BY order_total_value DESC
+LIMIT 20;
+```
+
+#### Daily Sales Aggregations
 ```sql
 -- Daily sales performance
 SELECT 
     order_date,
     total_revenue,
     total_orders_placed,
-    total_unique_customers
+    total_unique_customers,
+    avg_order_value
 FROM fct_daily_sales
 ORDER BY order_date DESC
 LIMIT 7;
@@ -350,14 +405,17 @@ SELECT count(), max(_event_timestamp_ms) FROM stg_orders;
 
 ## 🎯 Use Cases
 
-This pipeline enables real-time analytics for:
+This comprehensive data pipeline enables real-time analytics for:
 
-- **📊 Real-time Dashboards**: Live sales metrics and KPIs
-- **🔔 Alerting**: Anomaly detection on sales patterns
-- **📈 Business Intelligence**: Historical trend analysis
-- **🎯 Personalization**: Customer behavior analysis
-- **📦 Inventory Management**: Product performance tracking
-- **💰 Financial Reporting**: Revenue and profitability analysis
+- **📊 Real-time Dashboards**: Live sales metrics and KPIs using `fct_daily_sales`
+- **🔔 Alerting**: Anomaly detection on sales patterns and inventory levels
+- **📈 Business Intelligence**: Historical trend analysis across customers, products, and orders
+- **🎯 Personalization**: Customer segmentation and behavior analysis with `dim_customers`
+- **📦 Inventory Management**: Product performance and stock tracking via `dim_products`
+- **💰 Financial Reporting**: Detailed revenue analysis using `fact_orders` with enriched customer/product data
+- **🛒 Order Analytics**: Comprehensive order analysis including price variance detection
+- **👥 Customer Lifetime Value**: Track customer journey and purchasing patterns
+- **🏷️ Product Performance**: Analyze product sales by category and pricing tiers
 
 ## 🔧 Advanced Setup: Manual ClickHouse Connector
 
