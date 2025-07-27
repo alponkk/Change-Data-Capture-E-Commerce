@@ -340,25 +340,27 @@ graph TD
         C3[mongo.ecom.orders]
     end
     
-    subgraph "ClickHouse Bronze"
-        E1[mongo_ecom_customers]
-        E2[mongo_ecom_products]
-        E3[mongo_ecom_orders]
+    subgraph "Clickhouse ELT with dbt"
+        subgraph "ClickHouse Bronze"
+            E1[mongo_ecom_customers]
+            E2[mongo_ecom_products]
+            E3[mongo_ecom_orders]
+        end
+        
+        subgraph "ClickHouse Silver"
+            G1[stg_customers]
+            G2[stg_products]
+            G3[stg_orders]
+        end
+        
+        subgraph "ClickHouse Gold"
+            H1[fct_daily_sales<br/>Daily Aggregations]
+            H2[dim_customers<br/>Customer Dimension]
+            H3[dim_products<br/>Product Dimension]
+            H4[fact_orders<br/>Detailed Orders<br/>with Enrichments]
+        end
     end
-    
-    subgraph "ClickHouse Silver"
-        G1[stg_customers]
-        G2[stg_products]
-        G3[stg_orders]
-    end
-    
-    subgraph "ClickHouse Gold"
-        H1[fct_daily_sales<br/>Daily Aggregations]
-        H2[dim_customers<br/>Customer Dimension]
-        H3[dim_products<br/>Product Dimension]
-        H4[fact_orders<br/>Detailed Orders<br/>with Enrichments]
-    end
-    
+
     A1 --> A
     A2 --> A
     A3 --> A
