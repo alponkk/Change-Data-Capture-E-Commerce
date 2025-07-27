@@ -1,0 +1,29 @@
+[0m17:30:56.350601 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001E5BB3F96A0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001E5B92E8050>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001E5BC34FC50>]}
+
+
+============================== 17:30:56.360181 | 9e7d6652-9016-453a-a408-3c554254f4c8 ==============================
+[0m17:30:56.360181 [info ] [MainThread]: Running with dbt=1.9.7
+[0m17:30:56.361411 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'write_json': 'True', 'log_cache_events': 'False', 'partial_parse': 'True', 'cache_selected_only': 'False', 'profiles_dir': 'C:\\Users\\User\\.dbt', 'debug': 'False', 'version_check': 'True', 'log_path': 'logs', 'fail_fast': 'False', 'warn_error': 'None', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'empty': 'None', 'log_format': 'default', 'static_parser': 'True', 'invocation_command': 'dbt init ecom_analytics', 'introspect': 'True', 'target_path': 'None', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'send_anonymous_usage_stats': 'True'}
+[0m17:30:56.406938 [debug] [MainThread]: Starter project path: C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\dbt\include\starter_project
+[0m17:30:56.460885 [info ] [MainThread]: 
+Your new dbt project "ecom_analytics" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m17:30:56.462433 [info ] [MainThread]: Setting up your profile.
+[0m17:31:01.774283 [info ] [MainThread]: No sample profile found for clickhouse.
+[0m17:31:01.776193 [debug] [MainThread]: Command `dbt init` succeeded at 17:31:01.776006 after 5.67 seconds
+[0m17:31:01.776667 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001E5BC39EFD0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001E5BC4BDEB0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001E5BC44A9C0>]}
+[0m17:31:01.777171 [debug] [MainThread]: Flushing usage events
+[0m17:31:03.713629 [debug] [MainThread]: An error was encountered while trying to flush usage events

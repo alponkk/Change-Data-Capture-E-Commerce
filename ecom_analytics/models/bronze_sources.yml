@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: raw_ecom_data
+    description: "Raw e-commerce data streamed from MongoDB via Kafka into ClickHouse"
+    database: default
+    schema: default
+    tables:
+      - name: mongo_ecom_orders
+        description: "Raw order data from MongoDB containing JSON payloads from Debezium CDC"
+        columns:
+          - name: raw_data
+            description: "Complete JSON payload from Debezium containing order change events"
+            data_type: String
+        
+      - name: mongo_ecom_customers
+        description: "Raw customer data from MongoDB containing JSON payloads from Debezium CDC"
+        columns:
+          - name: raw_data
+            description: "Complete JSON payload from Debezium containing customer change events"
+            data_type: String
+            
+      - name: mongo_ecom_products
+        description: "Raw product data from MongoDB containing JSON payloads from Debezium CDC"
+        columns:
+          - name: raw_data
+            description: "Complete JSON payload from Debezium containing product change events"
+            data_type: String 

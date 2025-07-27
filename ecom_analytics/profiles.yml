@@ -1,0 +1,22 @@
+clickhouse_project:
+  target: dev
+  outputs:
+    dev:
+      type: clickhouse
+      host: localhost
+      port: 8123
+      user: default
+      password: ""
+      database: default
+      schema: default
+      secure: false
+      verify: false
+      cluster_mode: false
+      compression: ""
+      connect_timeout: 10
+      send_receive_timeout: 300
+      sync_request_timeout: 5
+      compress_block_size: 1048576
+      settings:
+        max_threads: 8
+        max_memory_usage: 10000000000 

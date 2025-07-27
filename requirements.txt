@@ -1,0 +1,10 @@
+# MongoDB Data Generation
+pymongo==4.6.1
+faker==20.1.0
+
+# dbt and ClickHouse adapter
+dbt-core==1.9.7
+dbt-clickhouse==1.9.2
+
+# Additional utilities
+requests==2.32.3 

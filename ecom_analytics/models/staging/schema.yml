@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: "Cleaned and parsed customer data from MongoDB"
+    columns:
+      - name: customer_id
+        description: "Unique customer identifier"
+        tests:
+          - unique
+          - not_null
+      - name: email
+        description: "Customer email address"
+        tests:
+          - unique
+          - not_null
+      - name: first_name
+        description: "Customer first name"
+        tests:
+          - not_null
+      - name: last_name
+        description: "Customer last name"
+        tests:
+          - not_null
+
+  - name: stg_products
+    description: "Cleaned and parsed product data from MongoDB"
+    columns:
+      - name: product_id
+        description: "Unique product identifier"
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: "Product name"
+        tests:
+          - not_null
+      - name: price
+        description: "Product price"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+  - name: stg_orders
+    description: "Cleaned and parsed order data from MongoDB"
+    columns:
+      - name: order_id
+        description: "Unique order identifier"
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Customer who placed the order"
+        tests:
+          - not_null
+      - name: order_status
+        description: "Current status of the order"
+        tests:
+          - accepted_values:
+              values: ['pending', 'shipped', 'delivered'] 

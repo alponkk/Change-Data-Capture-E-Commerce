@@ -1,0 +1,26 @@
+{
+  "name": "debezium-mongo-source",
+  "config": {
+    "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
+    "mongodb.connection.string": "mongodb://mongo:27017/ecom?replicaSet=rs0",
+    "database.include.list": "ecom",
+    "topic.prefix": "mongo.ecom",
+    "snapshot.mode": "initial",
+    "snapshot.collection.filter.overrides": "ecom.*",
+    "collection.include.list": "ecom.customers,ecom.products,ecom.orders",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.connector.mongodb.transforms.ExtractNewDocumentState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.delete.handling.mode": "rewrite",
+    "transforms.unwrap.operation.header": "true",
+    "heartbeat.interval.ms": "10000",
+    "tombstones.on.delete": "true",
+    "provide.transaction.metadata": "false",
+    "mongodb.authsource": "admin",
+    "mongodb.ssl.enabled": "false"
+  }
+} 
